@@ -48,13 +48,16 @@ export abstract class RelicChunkyParser {
         };
         let players = [];
         for (let i = 0; i < 8; i++) {
-
+            let currPos = pos;
             let playerChunkData = RelicChunkyParser.readPlayerChunk(data, pos);
-
-            //console.log(playerChunkData);
-
-            players.push(playerChunkData.player);
-            pos = playerChunkData.nextPlayerChunkPos;
+            if (playerChunkData === undefined) {
+                pos = currPos;
+                break;
+            }
+            else {
+                players.push(playerChunkData.player);
+                pos = playerChunkData.nextPlayerChunkPos;
+            }
         }
 
         let lastTimeStamp = 0;
@@ -81,9 +84,12 @@ export abstract class RelicChunkyParser {
     private static readPlayerChunk(
         data: Buffer,
         pos: number
-    ): playerChunk {
+    ): playerChunk | undefined {
         // 46 4f 4c 44 47 50 4c 59 = FOLDGPLY
         while (true) {
+            if (pos > data.length)
+                return undefined;
+
             if (data[pos] === 70 && data[pos + 1] === 79 && data[pos + 2] === 76 && data[pos + 3] === 68 &&
                 data[pos + 4] === 71 && data[pos + 5] === 80 && data[pos + 6] === 76 && data[pos + 7] === 89)
                 break;
