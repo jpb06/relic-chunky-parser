@@ -11,9 +11,13 @@ export abstract class RelicChunkyParser {
 
         let data = await fs.readFile(path);
 
-        let pos = 226;
+        let pos = 0;
+        let length = byteArrayToLong(data.slice(pos, pos + 4)); // length mod name
+        let modName = uintToString(data.slice(pos+4, pos + 4 + length)).replace(/\0/g, '');
+
+        pos = 226;
         pos += byteArrayToLong(data.slice(pos, pos + 4)) + 4;
-        let length = byteArrayToLong(data.slice(pos, pos + 4)); // length map name
+        length = byteArrayToLong(data.slice(pos, pos + 4)); // length map name
         let mapName = readUTF16String(data.slice(pos + 4, pos + 4 + length * 2), true);
         pos += length * 2 + 4;
 
@@ -44,7 +48,8 @@ export abstract class RelicChunkyParser {
             internalName: mapPath,
             url: '',
             players: [],
-            duration: 0
+            duration: 0,
+            modName: modName
         };
         let players = [];
         for (let i = 0; i < 8; i++) {
