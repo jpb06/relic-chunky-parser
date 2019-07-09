@@ -4,6 +4,7 @@
     url: string;
     players: Array<PlayerData>;
     duration: number;
+    modName: string;
 }
 
 export class PlayerData {
