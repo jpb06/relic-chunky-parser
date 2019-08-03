@@ -7,83 +7,90 @@ export abstract class RelicChunkyParser {
 
     public static async getReplayData(
         path: string
-    ): Promise<MapData> {
+    ): Promise<MapData | undefined> {
+
+        if (!fs.pathExists(path)) return undefined;
 
         let data = await fs.readFile(path);
 
-        let pos = 0;
-        let length = byteArrayToLong(data.slice(pos, pos + 4)); // length mod name
-        let modName = uintToString(data.slice(pos+4, pos + 4 + length)).replace(/\0/g, '');
+        try {
+            let pos = 0;
+            let length = byteArrayToLong(data.slice(pos, pos + 4)); // length mod name
+            let modName = uintToString(data.slice(pos + 4, pos + 4 + length)).replace(/\0/g, '');
 
-        pos = 226;
-        pos += byteArrayToLong(data.slice(pos, pos + 4)) + 4;
-        length = byteArrayToLong(data.slice(pos, pos + 4)); // length map name
-        let mapName = readUTF16String(data.slice(pos + 4, pos + 4 + length * 2), true);
-        pos += length * 2 + 4;
+            pos = 226;
+            pos += byteArrayToLong(data.slice(pos, pos + 4)) + 4;
+            length = byteArrayToLong(data.slice(pos, pos + 4)); // length map name
+            let mapName = readUTF16String(data.slice(pos + 4, pos + 4 + length * 2), true);
+            pos += length * 2 + 4;
 
-        length = byteArrayToLong(data.slice(pos, pos + 4)); // map path length
-        pos += 4;
-
-        let mapPath = uintToString(data.slice(pos, pos + length));
-        pos += length;
-
-        pos += 16;
-        //console.log(conversionHelper.uintToString(data.slice(pos, pos+8)));
-        pos += 8; // DATABASE
-        pos += 32;
-
-        pos += 61; // game options
-
-        length = byteArrayToLong(data.slice(pos, pos + 4)); // length replay name 
-        // conversionHelper.readUTF16String(data.slice(pos+4, pos+4+length*2), true);
-        pos += length * 2 + 4;
-
-        pos += 4;
-
-        length = byteArrayToLong(data.slice(pos, pos + 4)); // length win conditions
-        pos += length + 4;
-
-        let mapData: MapData = {
-            name: mapName,
-            internalName: mapPath,
-            url: '',
-            players: [],
-            duration: 0,
-            modName: modName
-        };
-        let players = [];
-        for (let i = 0; i < 8; i++) {
-            let currPos = pos;
-            let playerChunkData = RelicChunkyParser.readPlayerChunk(data, pos);
-            if (playerChunkData === undefined) {
-                pos = currPos;
-                break;
-            }
-            else {
-                players.push(playerChunkData.player);
-                pos = playerChunkData.nextPlayerChunkPos;
-            }
-        }
-
-        let lastTimeStamp = 0;
-        while (pos < data.length) {
-            let type = byteArrayToLong(data.slice(pos, pos + 4));
+            length = byteArrayToLong(data.slice(pos, pos + 4)); // map path length
             pos += 4;
-            if (type === 0) {
-                let actionData = RelicChunkyParser.readActionChunk(data, pos);
-                lastTimeStamp = actionData.timestamp;
-                pos = actionData.pos;
-            } else if (type === 1) {
-                pos = RelicChunkyParser.readChatChunk(data, pos);
+
+            let mapPath = uintToString(data.slice(pos, pos + length));
+            pos += length;
+
+            pos += 16;
+            //console.log(conversionHelper.uintToString(data.slice(pos, pos+8)));
+            pos += 8; // DATABASE
+            pos += 32;
+
+            pos += 61; // game options
+
+            length = byteArrayToLong(data.slice(pos, pos + 4)); // length replay name 
+            // conversionHelper.readUTF16String(data.slice(pos+4, pos+4+length*2), true);
+            pos += length * 2 + 4;
+
+            pos += 4;
+
+            length = byteArrayToLong(data.slice(pos, pos + 4)); // length win conditions
+            pos += length + 4;
+
+            let mapData: MapData = {
+                name: mapName,
+                internalName: mapPath,
+                url: '',
+                players: [],
+                duration: 0,
+                modName: modName
+            };
+            let players = [];
+            for (let i = 0; i < 8; i++) {
+                let currPos = pos;
+                let playerChunkData = RelicChunkyParser.readPlayerChunk(data, pos);
+                if (playerChunkData === undefined) {
+                    pos = currPos;
+                    break;
+                }
+                else {
+                    players.push(playerChunkData.player);
+                    pos = playerChunkData.nextPlayerChunkPos;
+                }
             }
+
+            let lastTimeStamp = 0;
+            while (pos < data.length) {
+                let type = byteArrayToLong(data.slice(pos, pos + 4));
+                pos += 4;
+                if (type === 0) {
+                    let actionData = RelicChunkyParser.readActionChunk(data, pos);
+                    lastTimeStamp = actionData.timestamp;
+                    pos = actionData.pos;
+                } else if (type === 1) {
+                    pos = RelicChunkyParser.readChatChunk(data, pos);
+                }
+            }
+
+            //console.log('pos : '+pos);
+
+            mapData.players = players;
+            mapData.duration = lastTimeStamp / 8;
+
+            return mapData;
+
+        } catch (err) {
+            return undefined;
         }
-
-        //console.log('pos : '+pos);
-
-        mapData.players = players;
-        mapData.duration = lastTimeStamp / 8;
-
-        return mapData;
     }
 
     private static readPlayerChunk(
