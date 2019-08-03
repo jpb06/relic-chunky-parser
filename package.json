@@ -1,6 +1,6 @@
 {
   "name": "relic-chunky-parser",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "relic-chunky-parser",
   "main": "js/index.js",
   "types": "typings/index.d.ts",
